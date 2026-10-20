@@ -1,0 +1,79 @@
+# Design Notes
+
+This document tracks locked decisions and implementation contracts.
+
+## Locked build order
+
+1. Tensor and autodiff engine.
+2. Baseline MLP and training loop.
+3. Masking + optimizer state policy.
+4. Saliency + pruning schedule and guards.
+5. Evaluation and reporting.
+6. Finalization and reproduction docs.
+
+## Locked optimizer-state policy (for Phase 3)
+
+- Masks define effective parameters: `W_eff = M * W`.
+- Per-element Adam state consists of first moment, second moment, and age.
+- A revived weight starts from zero with age one under the chosen revival policy.
+- State reset semantics must be deterministic and documented for prune and revive.
+
+## Locked saliency policy (for Phase 4)
+
+- Use per-example first-order Taylor sensitivity aggregation:
+
+  `score_ij = mean_b( abs(w_ij * g_bij) )`
+
+- Distinguish this from:
+  - batch-gradient proxy `abs(w * mean(g))`
+  - diagonal-Fisher style approximations.
+
+The chosen score estimates sensitivity and is not a signed expected loss-change
+estimator.
+
+## Testing contract
+
+- Do not claim a test passed unless it has been executed.
+- Every phase must ship deterministic tests with explicit expected values or invariants.
+
+## Phase 1 autodiff contracts
+
+### Backward semantics
+
+- Leaf tensors (`requires_grad=True` and no parents) accumulate gradients across
+  separate `backward()` calls.
+- Intermediate tensors reset their gradients at the start of each backward pass.
+- Calling `zero_grad()` on a leaf resets that leaf's stored gradient to zeros.
+- Non-scalar outputs must receive an explicit upstream gradient with matching
+  shape.
+
+### Deterministic graph traversal
+
+- Parent links are stored in a deterministic ordered tuple with deduplication.
+- Topological ordering uses iterative DFS (not Python recursion), preventing
+  recursion-limit failures on deep graphs.
+- Reproducibility tests compare identical runs across separate processes.
+  This is intended to verify deterministic traversal and accumulation order, not
+  to claim guaranteed bitwise identity across different hardware or BLAS setups.
+
+### Numerical stability policies
+
+- Cross-entropy uses stable log-softmax / log-sum-exp algebra, not
+  `log(softmax + eps)`.
+- Sigmoid uses a branch-stable implementation that avoids overflow in `exp`
+  for large-magnitude inputs.
+
+### Derivative edge cases
+
+- Some mathematically valid forward operations can have undefined or infinite
+  derivatives at specific points. Example: `d/dx sqrt(x) = 1/(2*sqrt(x))`, which
+  is infinite at `x = 0`.
+- Tests and gradient checks should avoid nondifferentiable or singular points
+  unless the behavior is explicitly being characterized.
+
+### Tensor data ownership
+
+- `Tensor(np_array)` copies the input array into internal storage.
+- External arrays and tensor storage are intentionally not aliased, avoiding
+  accidental shared mutation between model parameters, masks, and caller-owned
+  arrays.
