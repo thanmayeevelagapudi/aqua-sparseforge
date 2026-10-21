@@ -83,5 +83,6 @@ def assert_gradients_close(
             return float(scalar_tensor.data)
 
         numerical = finite_difference_gradient(scalar_fn, x, eps=eps)
-        np.testing.assert_allclose(tensors[input_index].grad, numerical, atol=atol, rtol=rtol)
-
+        np.testing.assert_allclose(
+            tensors[input_index].grad, numerical, atol=atol, rtol=rtol
+        )

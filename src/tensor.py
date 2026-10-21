@@ -198,7 +198,7 @@ class Tensor:
                 grad_self = out.grad / other.data
                 self.grad += _unbroadcast(grad_self, self.data.shape)
             if other.requires_grad:
-                grad_other = -out.grad * self.data / (other.data ** 2)
+                grad_other = -out.grad * self.data / (other.data**2)
                 other.grad += _unbroadcast(grad_other, other.data.shape)
 
         out._backward = _backward
@@ -211,7 +211,7 @@ class Tensor:
         if not isinstance(power, (float, int)):
             raise TypeError("power must be a numeric scalar")
 
-        out_data = self.data ** power
+        out_data = self.data**power
         out = Tensor(
             out_data,
             requires_grad=self.requires_grad,
@@ -401,7 +401,7 @@ class Tensor:
         def _backward() -> None:
             if out.grad is None or not self.requires_grad:
                 return
-            self.grad += (1.0 - out_data ** 2) * out.grad
+            self.grad += (1.0 - out_data**2) * out.grad
 
         out._backward = _backward
         return out

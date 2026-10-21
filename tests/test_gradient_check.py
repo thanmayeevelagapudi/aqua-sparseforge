@@ -40,7 +40,7 @@ def test_grad_unary_pow_weighted() -> None:
     x = (np.abs(rng.normal(size=(2, 2))) + 0.5).astype(np.float64)
     w = _weights((2, 2), seed=103)
 
-    assert_gradients_close(lambda a: a ** 2.5, [x], output_weights=w)
+    assert_gradients_close(lambda a: a**2.5, [x], output_weights=w)
 
 
 def test_grad_activation_tanh_weighted() -> None:
@@ -63,7 +63,9 @@ def test_grad_activation_relu_weighted_away_from_kinks() -> None:
     x = np.array([[-1.5, -0.25, 0.75], [1.25, 2.0, -3.0]], dtype=np.float64)
     w = _weights((2, 3), seed=106)
 
-    assert_gradients_close(lambda a: a.relu(), [x], output_weights=w, atol=1e-6, rtol=1e-6)
+    assert_gradients_close(
+        lambda a: a.relu(), [x], output_weights=w, atol=1e-6, rtol=1e-6
+    )
 
 
 def test_grad_add_broadcast_weighted() -> None:
@@ -137,7 +139,11 @@ def test_grad_transpose_weighted() -> None:
 @pytest.mark.parametrize(
     ("left", "right", "weights_seed"),
     [
-        (np.array([0.5, -1.0, 2.0], dtype=np.float64), np.array([1.0, 3.0, -2.0], dtype=np.float64), None),
+        (
+            np.array([0.5, -1.0, 2.0], dtype=np.float64),
+            np.array([1.0, 3.0, -2.0], dtype=np.float64),
+            None,
+        ),
         (
             np.array([1.5, -2.0, 0.3], dtype=np.float64),
             np.array(
@@ -182,7 +188,9 @@ def test_grad_matmul_weighted(
     weights_seed: int | None,
 ) -> None:
     output_shape = np.matmul(left, right).shape
-    output_weights = None if weights_seed is None else _weights(output_shape, seed=weights_seed)
+    output_weights = (
+        None if weights_seed is None else _weights(output_shape, seed=weights_seed)
+    )
 
     assert_gradients_close(
         lambda a, b: a @ b,

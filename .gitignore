@@ -1,24 +1,15 @@
-# Python caches and compiled files
+# Python caches
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
 
-# Test artifacts
+# Test and tooling caches
 .pytest_cache/
+.ruff_cache/
 
-# Virtual environments
+# Local environments
 .venv/
 venv/
 env/
 
-# Local environment files
+# Local secrets
 .env
-.env.*
-
-# Log files
-*.log
-
-# OS/editor artifacts
-.DS_Store
-Thumbs.db

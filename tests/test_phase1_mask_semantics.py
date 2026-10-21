@@ -25,7 +25,9 @@ def test_masked_entries_do_not_affect_forward_output() -> None:
     )
 
     w_mutated = w_base.copy()
-    w_mutated[mask == 0.0] = rng.normal(loc=0.0, scale=1000.0, size=int((mask == 0.0).sum()))
+    w_mutated[mask == 0.0] = rng.normal(
+        loc=0.0, scale=1000.0, size=int((mask == 0.0).sum())
+    )
 
     x1 = Tensor(x_data)
     y1 = x1 @ effective_weight(Tensor(w_base, requires_grad=False), mask)
@@ -64,7 +66,9 @@ def test_masked_gradient_matches_chain_rule_for_underlying_weights() -> None:
 
     expected_grad = mask * w_direct_eff.grad
     np.testing.assert_allclose(w_underlying.grad, expected_grad, atol=1e-10, rtol=1e-10)
-    np.testing.assert_allclose(w_underlying.grad[mask == 0.0], 0.0, atol=1e-12, rtol=0.0)
+    np.testing.assert_allclose(
+        w_underlying.grad[mask == 0.0], 0.0, atol=1e-12, rtol=0.0
+    )
 
 
 def test_effective_weight_rejects_non_binary_or_shape_mismatch_masks() -> None:
@@ -74,4 +78,6 @@ def test_effective_weight_rejects_non_binary_or_shape_mismatch_masks() -> None:
         effective_weight(weight, np.ones((3, 2), dtype=np.float64))
 
     with pytest.raises(ValueError, match="mask must be binary"):
-        effective_weight(weight, np.array([[1.0, 0.0, 0.5], [0.0, 1.0, 1.0]], dtype=np.float64))
+        effective_weight(
+            weight, np.array([[1.0, 0.0, 0.5], [0.0, 1.0, 1.0]], dtype=np.float64)
+        )

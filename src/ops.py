@@ -51,9 +51,7 @@ def cross_entropy(logits: Tensor, targets: np.ndarray) -> Tensor:
 
     targets = raw_targets.astype(np.int64, copy=False)
     if np.any(targets < 0) or np.any(targets >= num_classes):
-        raise ValueError(
-            f"target class indices must be in [0, {num_classes - 1}]"
-        )
+        raise ValueError(f"target class indices must be in [0, {num_classes - 1}]")
 
     one_hot = np.zeros_like(logits.data)
     one_hot[np.arange(batch_size), targets] = 1.0

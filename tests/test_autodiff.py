@@ -150,7 +150,9 @@ def test_cross_entropy_confident_wrong_extreme_logits() -> None:
     loss.backward()
 
     assert np.isclose(loss.item(), 1000.0, atol=1e-8)
-    np.testing.assert_allclose(logits.grad, np.array([[1.0, -1.0]], dtype=np.float64), atol=1e-12)
+    np.testing.assert_allclose(
+        logits.grad, np.array([[1.0, -1.0]], dtype=np.float64), atol=1e-12
+    )
 
 
 def test_cross_entropy_confident_wrong_large_logits() -> None:
@@ -161,7 +163,9 @@ def test_cross_entropy_confident_wrong_large_logits() -> None:
     loss.backward()
 
     assert np.isclose(loss.item(), 50.0, atol=1e-8)
-    np.testing.assert_allclose(logits.grad, np.array([[1.0, -1.0]], dtype=np.float64), atol=1e-8)
+    np.testing.assert_allclose(
+        logits.grad, np.array([[1.0, -1.0]], dtype=np.float64), atol=1e-8
+    )
 
 
 def test_cross_entropy_correct_extreme_logits_is_nonnegative_and_near_zero() -> None:
@@ -173,7 +177,9 @@ def test_cross_entropy_correct_extreme_logits_is_nonnegative_and_near_zero() -> 
 
     assert loss.item() >= -1e-12
     assert loss.item() <= 1e-12
-    np.testing.assert_allclose(logits.grad, np.array([[0.0, 0.0]], dtype=np.float64), atol=1e-12)
+    np.testing.assert_allclose(
+        logits.grad, np.array([[0.0, 0.0]], dtype=np.float64), atol=1e-12
+    )
 
 
 def test_cross_entropy_batch_average_scaling_and_gradient() -> None:
@@ -196,7 +202,9 @@ def test_cross_entropy_batch_average_scaling_and_gradient() -> None:
 
 
 def test_cross_entropy_rejects_invalid_inputs() -> None:
-    logits = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64), requires_grad=True)
+    logits = Tensor(
+        np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64), requires_grad=True
+    )
 
     with pytest.raises(TypeError, match="integer array"):
         cross_entropy(logits, np.array([0.0, 1.0], dtype=np.float64))
@@ -225,7 +233,9 @@ def test_backward_accumulates_leaf_gradients_until_zero_grad() -> None:
     assert np.isclose(float(w.grad), 0.0)
 
 
-def test_backward_twice_on_same_graph_does_not_reuse_stale_intermediate_gradients() -> None:
+def test_backward_twice_on_same_graph_does_not_reuse_stale_intermediate_gradients() -> (
+    None
+):
     x = Tensor(2.0, requires_grad=True)
     y = x * x
 
@@ -267,7 +277,9 @@ def test_sigmoid_extremes_no_overflow_warning_and_finite_gradient() -> None:
     with np.errstate(over="raise", divide="raise", invalid="raise"):
         y = x.sigmoid()
 
-    np.testing.assert_allclose(y.data, np.array([0.0, 0.5, 1.0], dtype=np.float64), atol=0.0, rtol=0.0)
+    np.testing.assert_allclose(
+        y.data, np.array([0.0, 0.5, 1.0], dtype=np.float64), atol=0.0, rtol=0.0
+    )
 
     y.backward(np.array([1.0, 1.0, 1.0], dtype=np.float64))
     np.testing.assert_allclose(
