@@ -3,7 +3,7 @@
 import pytest
 
 
-pytestmark = pytest.mark.skip(reason="Phase 1 only: pruning tests are pending")
+pytestmark = pytest.mark.skip(reason="Phase 3 onward: pruning tests are pending")
 
 
 def test_pruning_placeholder() -> None:
