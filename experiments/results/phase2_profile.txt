@@ -1,0 +1,28 @@
+         932 function calls (930 primitive calls) in 0.001 seconds
+
+   Ordered by: cumulative time
+   List reduced from 96 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.001    0.001 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\train.py:285(one_step)
+        1    0.000    0.000    0.001    0.001 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:451(backward)
+        1    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\ops.py:30(cross_entropy)
+       24    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:83(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\ops.py:22(log_softmax)
+      3/1    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\nn.py:18(__call__)
+        1    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\nn.py:116(forward)
+        2    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\nn.py:59(forward)
+       37    0.000    0.000    0.000    0.000 C:\Python314\Lib\site-packages\numpy\_core\numeric.py:97(zeros_like)
+        3    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:289(_backward)
+        2    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:154(__sub__)
+        2    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:230(__matmul__)
+        1    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\optim.py:52(step)
+        4    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:160(__mul__)
+        3    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:151(__neg__)
+        4    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:128(__add__)
+        2    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:243(_backward)
+       24    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:12(_to_numpy)
+        3    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:281(sum)
+       24    0.000    0.000    0.000    0.000 C:\Users\VeTh702\OneDrive - HP Inc\Desktop\Tredence\aqua-sparseforge\src\tensor.py:18(_ordered_unique_tensors)
+
+
