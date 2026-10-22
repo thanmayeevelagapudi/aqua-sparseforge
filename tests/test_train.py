@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -87,14 +88,23 @@ def test_save_history_artifacts_writes_csv_and_png(tmp_path) -> None:
         "train_acc": [0.4, 0.7, 0.9],
         "val_loss": [1.3, 0.9, 0.6],
         "val_acc": [0.35, 0.65, 0.88],
+        "mask_sparsity": [0.0, 0.2, 0.4],
+        "target_sparsity": [0.0, 0.3, 0.5],
+        "pruned_this_epoch": [0, 8, 6],
     }
     paths = save_history_artifacts(
         history=history, output_dir=str(tmp_path), prefix="phase2_test"
     )
 
     assert "history_csv" in paths and "history_png" in paths
-    assert (tmp_path / "phase2_test_history.csv").exists()
+    csv_path = tmp_path / "phase2_test_history.csv"
+    assert csv_path.exists()
     assert (tmp_path / "phase2_test_learning_curve.png").exists()
+
+    csv_header = csv_path.read_text(encoding="utf-8").splitlines()[0]
+    assert "mask_sparsity" in csv_header
+    assert "target_sparsity" in csv_header
+    assert "pruned_this_epoch" in csv_header
 
 
 def test_train_baseline_raises_on_non_finite_loss() -> None:
@@ -126,6 +136,26 @@ def test_synthetic_loader_honors_samples_per_class() -> None:
         counts,
         np.full((config.n_classes,), config.samples_per_class, dtype=np.int64),
     )
+
+
+def test_train_baseline_reports_test_metrics_when_test_ratio_enabled() -> None:
+    config = TrainConfig(
+        dataset="synthetic",
+        seed=23,
+        n_features=8,
+        n_classes=3,
+        samples_per_class=20,
+        hidden_size=16,
+        batch_size=8,
+        epochs=3,
+        lr=1e-2,
+        test_ratio=0.2,
+    )
+
+    artifacts = train_baseline(config, verbose=False)
+    assert artifacts["final_test_loss"] is not None
+    assert artifacts["final_test_acc"] is not None
+    assert artifacts["splits"]["test_samples"] > 0
 
 
 def test_profile_report_sanitizes_python_install_paths(tmp_path) -> None:
@@ -168,3 +198,45 @@ def test_main_profile_step_exits_without_full_training(monkeypatch, tmp_path) ->
 
     train_module.main()
     assert called["train"] is False
+
+
+def test_main_writes_json_summary_file(monkeypatch, tmp_path) -> None:
+    json_out = tmp_path / "summary.json"
+
+    def fake_train(config, verbose=False, data_override=None):
+        return {
+            "dataset": "fake",
+            "final_test_loss": None,
+            "final_test_acc": None,
+            "history": {
+                "epoch": [1],
+                "train_loss": [1.0],
+                "train_acc": [0.5],
+                "val_loss": [1.1],
+                "val_acc": [0.4],
+            },
+            "splits": {
+                "train_samples": 10,
+                "val_samples": 2,
+                "n_features": 4,
+                "n_classes": 2,
+            },
+        }
+
+    def fake_profile(config, output_path=None, steps=20, top_n=20):
+        return "10 function calls"
+
+    monkeypatch.setattr(train_module, "train_baseline", fake_train)
+    monkeypatch.setattr(train_module, "profile_training_step", fake_profile)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["train.py", "--quiet", "--epochs", "1", "--json-out", str(json_out)],
+    )
+
+    train_module.main()
+
+    assert json_out.exists()
+    payload = json.loads(json_out.read_text(encoding="utf-8"))
+    assert payload["dataset"] == "fake"
+    assert payload["final_val_acc"] == 0.4

@@ -70,24 +70,105 @@ Implementation note:
 
 ## Locked saliency policy (for Phase 4)
 
-- Use per-example first-order Taylor sensitivity aggregation:
+- Baseline criterion: magnitude pruning using `|w_ij|`.
+- Stronger criterion: first-order Taylor saliency using `|w_ij * g_ij|`.
+- Production implementation in this repository uses minibatch-averaged
+  first-order signal accumulated across training batches in an epoch:
 
-  `score_ij = mean_b( abs(w_ij * g_bij) )`
+  `score_ij = mean_t( abs(w_ij * g_ij^(t)) )`
+
+  where `g_ij^(t)` is the effective-weight gradient from minibatch `t`.
+
+- This implementation is a practical Taylor-style heuristic and does **not**
+  claim universal superiority over magnitude pruning.
+
+### First-order loss-change derivation
+
+Consider removing one connection by setting `w_ij` to `0`.
+
+Let `Delta w_ij = -w_ij` and write a first-order Taylor expansion:
+
+`Delta L ~= (dL/dw_ij) * Delta w_ij = - (dL/dw_ij) * w_ij`
+
+So the estimated absolute loss impact is:
+
+`|Delta L| ~= |w_ij * dL/dw_ij|`
+
+For masked training, gradients are taken with respect to effective weights,
+and the same form applies with `dL/dw_eff,ij`.
+
+Connections with smaller `|w_ij * g_ij|` are estimated to cause smaller local
+loss change on removal, so they are pruned first.
+
+### Pruning schedule and enforcement
+
+- Schedule: cubic sparsity ramp from `0` to target sparsity:
+
+  `s(e) = s_final * (1 - (1 - p)^3)`,
+
+  where `p` is normalized progress between `prune_start_epoch` and
+  `prune_end_epoch`.
+
+- Why cubic: it prunes gently early (stability) and accelerates later once the
+  model has adapted to earlier removals.
+
+- Hard target enforcement: each prune step computes the exact active-parameter
+  target from masks and prunes globally by saliency ranking until that active
+  count is met, or reports an explicit limitation.
+
+  Discrete enforcement uses:
+
+  `active_target = floor((1 - s_target) * total_params)`
+
+  which guarantees achieved mask sparsity is never below requested target.
+
+- Layer-collapse guard: each masked layer keeps at least
+  `min_survivors_per_layer` active connections.
+
+- Row/column guards are opt-in (`min_survivors_per_row`,
+  `min_survivors_per_col`, both default 0). The default structural guard is
+  output-layer-only column connectivity (`min_survivors_per_output_col=1`) so
+  each output class remains connected.
+
+- Strict global row+column guards can impose a hard sparsity ceiling. For the
+  `64x256 + 256x10` topology with both set to `1`, minimum active parameters
+  are approximately `512` (about `97.3%` maximum sparsity).
+
+- If guards prevent reaching the global target, the limitation is reported
+  explicitly.
 
 - Distinguish this from:
-  - batch-gradient proxy `abs(w * mean(g))`
+  - full-data first-order proxy `abs(w * mean(g))`
+    (i.e., absolute of mean gradient)
   - diagonal-Fisher style approximations.
 
-Implementation constraint for this repository:
-
-- The current engine naturally produces batch-mean gradients for a scalar loss.
-- To implement per-example `g_bij` without redesigning autodiff internals,
-  Phase 4 will compute Taylor scores via deterministic microbatch size `1`
-  gradient accumulation (or equivalently, a per-example loop), then aggregate
-  `mean_b(abs(w_ij * g_bij))`.
+The implemented `mean(abs(w * g_t))` and `abs(w * mean(g_t))` are related but
+not identical estimators; both should be treated as first-order proxies rather
+than guaranteed dominance criteria.
 
 The chosen score estimates sensitivity and is not a signed expected loss-change
 estimator.
+
+### Test-to-claim map (Phase 4)
+
+| Claim | Test |
+| --- | --- |
+| Cubic schedule is monotonic and hits final target | `tests/test_phase4_pruning.py::test_cubic_schedule_is_monotonic_and_hits_target` |
+| Global hard-target pruning reaches mask-count target when feasible | `tests/test_phase4_pruning.py::test_hard_target_pruning_reaches_requested_mask_count_when_feasible` |
+| Discrete target enforcement never undershoots requested sparsity on 18,944 params | `tests/test_phase4_pruning.py::test_enforced_target_active_count_achieves_at_least_requested_sparsity` |
+| Magnitude score equals absolute effective weights | `tests/test_phase4_pruning.py::test_compute_magnitude_scores_matches_absolute_effective_weights` |
+| Taylor score equals abs(w_eff * grad_eff) and validates missing grad signal | `tests/test_phase4_pruning.py::test_compute_taylor_scores_matches_w_times_grad_and_requires_grad_signal` |
+| Global pruning removes lowest-score connections first | `tests/test_phase4_pruning.py::test_apply_global_pruning_prunes_lowest_scores_first` |
+| Taylor and magnitude can produce different rankings | `tests/test_phase4_pruning.py::test_taylor_and_magnitude_can_rank_connections_differently` |
+| Per-layer guard prevents collapse and reports limitation | `tests/test_phase4_pruning.py::test_layer_guard_prevents_collapse_and_reports_limitation` |
+| Row/column guard prevents dimension collapse | `tests/test_phase4_pruning.py::test_row_col_survivor_guards_prevent_dimension_collapse` |
+| Output-layer-only column guard preserves class connectivity while allowing high sparsity | `tests/test_phase4_pruning.py::test_output_layer_column_guard_only_preserves_class_connectivity` |
+| Achieved sparsity is mask-based (not near-zero counting) | `tests/test_phase4_pruning.py::test_sparsity_computed_from_masks_not_weight_magnitudes` |
+| Self-pruning training progressively increases sparsity and keeps inactive weights zero | `tests/test_phase4_pruning.py::test_self_pruning_training_progressively_prunes_and_reports_target` |
+| Prune-event active counts satisfy per-epoch floor target and schedule/frequency constraints | `tests/test_phase4_pruning.py::test_self_pruning_schedule_adheres_to_configured_target_curve` |
+| Self-pruning is deterministic for a fixed seed | `tests/test_phase4_pruning.py::test_self_pruning_is_deterministic_for_fixed_seed` |
+| Paired-seed summary emits expected shape on held-out split | `tests/test_phase4_pruning.py::test_paired_seed_comparison_reports_expected_shape` |
+| Magnitude baseline path remains functional | `tests/test_phase4_pruning.py::test_self_pruning_magnitude_path_runs_and_prunes` |
 
 ## Testing contract
 

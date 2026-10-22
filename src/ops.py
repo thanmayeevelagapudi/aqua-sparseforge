@@ -49,7 +49,7 @@ def cross_entropy(logits: Tensor, targets: np.ndarray) -> Tensor:
     if not np.issubdtype(raw_targets.dtype, np.integer):
         raise TypeError("targets must be an integer array of class indices")
 
-    targets = raw_targets.astype(np.int64, copy=False)
+    targets = np.asarray(raw_targets, dtype=np.int64)
     if np.any(targets < 0) or np.any(targets >= num_classes):
         raise ValueError(f"target class indices must be in [0, {num_classes - 1}]")
 

@@ -3,7 +3,7 @@
 NumPy-only implementation of an autodiff + training + pruning pipeline.
 
 This repository is being built in the six-phase order agreed in planning.
-Current status: **Phases 1-3 complete (autodiff + dense baseline + masked optimizer-state semantics)**.
+Current status: **Phases 1-4 complete (autodiff + dense baseline + controlled self-pruning)**.
 
 ## Environment
 
@@ -68,18 +68,58 @@ bottlenecks.
 
 - `src/tensor.py`: reverse-mode autodiff tensor engine
 - `src/ops.py`: softmax and cross-entropy helpers
-- `src/pruning.py`: Phase 1 mask semantics helpers (`W_eff = M * W`)
+- `src/pruning.py`: mask semantics, saliency scoring, schedules, and hard-target pruning
 - `src/nn.py`: MLP components (Linear/MaskedLinear + activation wiring)
 - `src/optim.py`: from-scratch Adam + masked-state Adam
-- `src/train.py`: deterministic baseline training loop (digits by default) and profiling
+- `src/train.py`: dense baseline training, profiling, and Phase 4 self-pruning loop
 - `tests/test_autodiff.py`: required regression tests
 - `tests/test_gradient_check.py`: finite-difference gradient checks
 - `tests/test_phase1_mask_semantics.py`: masked-weight correctness tests
 - `tests/test_optimizer.py`: optimizer correctness tests
 - `tests/test_train.py`: training, reproducibility, and profiling tests
 - `tests/test_pruning.py`: prune/revive state-reset and effective-gradient contracts
+- `tests/test_phase4_pruning.py`: schedule, target-enforcement, guard, and Phase 4 integration tests
 
-Structured pruning schedule and sparse evaluation are deferred to later phases.
+## Phase 4 self-pruning command
+
+```bash
+python -m src.train --self-prune --dataset digits --seed 42 --epochs 30 --batch-size 32 --hidden-size 256 --lr 0.01 --prune-criterion taylor --target-sparsity 0.80 --prune-start-epoch 2 --prune-end-epoch 30 --prune-frequency 1 --min-survivors-per-layer 1 --min-survivors-per-output-col 1 --test-ratio 0.1 --save-artifacts --json-out experiments/results/phase4_self_prune_summary.json
+```
+
+This command is deterministic for a fixed seed and prints a JSON summary with:
+
+- final sparse accuracy,
+- final held-out test accuracy (when `--test-ratio > 0`),
+- achieved mask-based sparsity,
+- whether target sparsity was reached (or explicit limitation text),
+- dense-baseline comparison and `accuracy_cost_vs_dense`.
+
+By default, `--self-prune` also runs a dense baseline comparison pass.
+Use `--skip-dense-compare` to skip that pass.
+
+Training logs are written to stderr; final summary JSON is written to stdout.
+Use `--json-out <path>` to additionally persist the summary JSON to disk.
+
+Row/column guards are opt-in and disabled by default (`--min-survivors-per-row 0`
+and `--min-survivors-per-col 0`). By default, only output-layer column
+connectivity is guarded (`--min-survivors-per-output-col 1`) so all class logits
+remain connected while still allowing very high global sparsity targets.
+
+If you enable strict row+column guards globally (for example both set to 1),
+they can impose a hard sparsity ceiling. For the 64x256 + 256x10 architecture,
+that floor is roughly 512 active weights, i.e. about 97.3% maximum sparsity.
+
+## Paired-seed comparison (recommended before Phase 5)
+
+```bash
+python -m src.train --self-prune --dataset digits --epochs 30 --batch-size 32 --hidden-size 256 --lr 0.01 --prune-criterion taylor --target-sparsity 0.80 --prune-start-epoch 2 --prune-end-epoch 30 --prune-frequency 1 --min-survivors-per-layer 1 --min-survivors-per-output-col 1 --test-ratio 0.1 --paired-seed-eval --paired-seed-count 10 --paired-seed-start 100 --quiet --json-out experiments/results/phase4_paired_seed_summary.json
+```
+
+This emits per-seed dense/sparse metrics and aggregate mean/std on the held-out
+test split. For Phase 5, run this under both guard settings:
+
+- output-column-only guard (default),
+- strict row+column guards (opt-in).
 
 ## Phase 3 masked-optimizer usage
 
