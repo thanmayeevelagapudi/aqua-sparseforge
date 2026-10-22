@@ -170,6 +170,57 @@ estimator.
 | Paired-seed summary emits expected shape on held-out split | `tests/test_phase4_pruning.py::test_paired_seed_comparison_reports_expected_shape` |
 | Magnitude baseline path remains functional | `tests/test_phase4_pruning.py::test_self_pruning_magnitude_path_runs_and_prunes` |
 
+## Phase 5 evaluation protocol
+
+### Matched-sparsity comparison
+
+- Phase 5 compares Taylor and magnitude using paired seeds under identical
+  training/splitting configuration.
+- Primary comparison rows require matched achieved sparsity and matched active
+  parameter counts for each `(seed, target)` pair.
+- If a pair does not match achieved sparsity/active count, it is recorded but
+  excluded from paired-difference conclusions.
+
+### Sparse-aware inference and cost accounting
+
+- Sparse-aware inference uses explicit active-connection traversal
+  (`predict_logits_numpy_sparse`) rather than dense matmul over zeroed weights.
+- Latency reporting is split into:
+  - sparse plan build cost (`sparse_csr_build_ms`),
+  - sparse total latency including plan build,
+  - sparse run-only latency with pre-built sparse plan,
+  - corresponding dense baselines for both eval-batch and batch-size-1 paths.
+- Numerical equivalence target: absolute dense-vs-sparse logit error <= `1e-10`
+  (float64 path).
+- Cost reporting includes both:
+  - theoretical linear-layer arithmetic (`theory_sparse_over_dense_flops`), and
+  - measured median wall-clock latency with warmup/repeats.
+
+Theoretical arithmetic reduction is not interpreted as guaranteed speedup.
+Measured latency is the performance source of truth on tested hardware.
+
+### Statistical reporting
+
+- Per-target paired difference is `acc_taylor - acc_magnitude`.
+- Reported statistics: mean, standard deviation, bootstrap 95% CI, paired
+  t-interval, and paired sign-flip permutation p-value.
+- Small-seed sweeps can yield wide intervals; if CI includes zero, no
+  superiority claim is made.
+
+### Test-to-claim map (Phase 5)
+
+| Claim | Test |
+| --- | --- |
+| Sparse-aware forward matches dense masked logits within strict tolerance | `tests/test_sparse_inference.py::test_sparse_predict_matches_masked_dense_forward` |
+| Sparse-aware forward also matches dense path for unmasked models | `tests/test_sparse_inference.py::test_sparse_predict_matches_dense_for_unmasked_model` |
+| Inference cost accounting reflects active-connection counts and reduced linear ops | `tests/test_sparse_inference.py::test_sparse_inference_cost_reflects_active_connections` |
+| Sparse-aware path remains equivalent for batch-size-1 tanh/sigmoid cases | `tests/test_sparse_inference.py::test_sparse_predict_matches_masked_dense_for_batch_size_one` |
+| Sparse-aware path handles all-pruned hidden layer without divergence | `tests/test_sparse_inference.py::test_sparse_predict_handles_all_pruned_hidden_layer` |
+| Sparse-aware path remains equivalent on trained-size (64-256-10) ~95% sparse masks | `tests/test_sparse_inference.py::test_sparse_predict_matches_dense_for_trained_size_high_sparsity` |
+| Paired-row matching logic marks matched/unmatched cases correctly | `tests/test_phase5_sweep.py::test_build_paired_rows_marks_matched_and_unmatched_pairs` |
+| Paired uncertainty outputs include bootstrap, t-interval, and permutation keys | `tests/test_phase5_sweep.py::test_summarize_paired_statistics_reports_expected_keys` |
+| Phase 5 CSV schema includes latency decomposition and sparse-cost columns | `tests/test_phase5_sweep.py::test_phase5_csv_schema_contains_latency_and_cost_columns` |
+
 ## Testing contract
 
 - Do not claim a test passed unless it has been executed.
